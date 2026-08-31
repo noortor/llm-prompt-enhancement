@@ -8,7 +8,7 @@ from rich.table import Table
 
 from . import evaluation, prompt_versions, retrieval, seed_data
 from .config import COMPONENTS, REVIEWER_EMAIL, SEVERITY_LEVELS
-from .db import db_exists, dumps, get_conn, init_db
+from .db import dumps, get_conn, init_db
 from .llm_client import triage_report
 
 app = typer.Typer(help="Human-in-the-loop bug-triage improvement CLI.")
@@ -19,13 +19,31 @@ console = Console()
 
 
 def _ensure_ready():
-    if not db_exists():
-        init_db()
+    # Always run the schema rather than only when the file is absent: it is
+    # entirely CREATE ... IF NOT EXISTS, so this is idempotent, and it repairs
+    # a database file that exists but has no tables (an interrupted init, a
+    # truncated copy) instead of failing later on a missing-table error.
+    init_db()
     with get_conn() as conn:
         n_seeded = seed_data.seed(conn)
         prompt_versions.ensure_baseline(conn)
     if n_seeded:
         console.print(f"[dim]Seeded {n_seeded} bug reports.[/dim]")
+
+
+def _get_version(conn, version_id: Optional[int] = None):
+    """Look up a prompt version, or the active one when no id is given.
+
+    Turns a bad id into a one-line message and a non-zero exit rather than a
+    traceback, since an unknown version number is ordinary user error.
+    """
+    try:
+        if version_id is None:
+            return prompt_versions.get_active(conn)
+        return prompt_versions.get_by_id(conn, version_id)
+    except RuntimeError as e:
+        console.print(f"[red]{e}[/red]")
+        raise typer.Exit(1)
 
 
 @app.command()
@@ -240,11 +258,7 @@ def eval_cmd(version_id: Optional[int] = typer.Argument(None, help="Defaults to 
     """Run the held-out eval set through a prompt version."""
     _ensure_ready()
     with get_conn() as conn:
-        pv = (
-            prompt_versions.get_active(conn)
-            if version_id is None
-            else prompt_versions.get_by_id(conn, version_id)
-        )
+        pv = _get_version(conn, version_id)
         console.print(f"Running eval for version {pv.id} ({pv.label})...")
         run = evaluation.run_eval(conn, pv)
 
@@ -263,8 +277,8 @@ def diff(baseline_id: int, candidate_id: int):
     """Diff two prompt versions' latest eval runs: fixes vs. regressions."""
     _ensure_ready()
     with get_conn() as conn:
-        baseline = prompt_versions.get_by_id(conn, baseline_id)
-        candidate = prompt_versions.get_by_id(conn, candidate_id)
+        baseline = _get_version(conn, baseline_id)
+        candidate = _get_version(conn, candidate_id)
         baseline_run = evaluation.get_latest_eval_run(conn, baseline_id)
         candidate_run = evaluation.get_latest_eval_run(conn, candidate_id)
         if baseline_run is None:
@@ -394,8 +408,8 @@ def report_export_cmd(
 
     _ensure_ready()
     with get_conn() as conn:
-        baseline = prompt_versions.get_by_id(conn, baseline_id)
-        candidate = prompt_versions.get_by_id(conn, candidate_id)
+        baseline = _get_version(conn, baseline_id)
+        candidate = _get_version(conn, candidate_id)
         baseline_run = evaluation.get_latest_eval_run(conn, baseline_id)
         candidate_run = evaluation.get_latest_eval_run(conn, candidate_id)
         if baseline_run is None:
