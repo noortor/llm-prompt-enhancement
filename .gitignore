@@ -1,0 +1,10 @@
+.env
+data/*.db
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+.DS_Store
+*.html
+!triage/templates/*.html
