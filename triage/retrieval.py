@@ -19,7 +19,8 @@ def get_exemplars(
     rows = conn.execute(
         """
         SELECT c.id AS correction_id, c.report_id, c.original_severity,
-               c.original_component, c.corrected_severity, c.corrected_component,
+               c.original_component, c.original_rationale,
+               c.corrected_severity, c.corrected_component,
                c.corrected_rationale, b.title AS report_title,
                b.description AS report_description
         FROM corrections c
@@ -55,6 +56,7 @@ def get_exemplars(
                 report_description=row["report_description"],
                 original_severity=row["original_severity"],
                 original_component=row["original_component"],
+                original_rationale=row["original_rationale"],
                 corrected_severity=row["corrected_severity"],
                 corrected_component=row["corrected_component"],
                 corrected_rationale=row["corrected_rationale"],

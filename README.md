@@ -70,11 +70,12 @@ python -m triage.cli report export --baseline 1 --candidate 2 --out eval_report.
 open eval_report.html   # (or just open the file in a browser)
 ```
 
-Running this exactly as above reproduces what's documented in `DESIGN.md`:
-severity accuracy goes from **38.5% → 76.9%** on the held-out set (component
-accuracy holds at 100% throughout), with 6 examples fixed and 1 genuine
-regression that the promotion gate catches and requires an explicit
-`--force` to override.
+Your exact numbers will depend on which corrections you make, since the whole
+point is that human judgment drives the improvement. In the run documented in
+`DESIGN.md`, 8 corrections took severity accuracy from **38.5% to 61.5%** on
+the held-out set (component accuracy holds at 100% throughout), fixing 4
+examples and regressing 1. That regression is real and reproducible: the
+promotion gate blocks on it and requires an explicit `--force` to override.
 
 ## All commands
 

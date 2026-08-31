@@ -8,7 +8,7 @@ from rich.table import Table
 
 from . import evaluation, prompt_versions, retrieval, seed_data
 from .config import COMPONENTS, REVIEWER_EMAIL, SEVERITY_LEVELS
-from .db import db_exists, dumps, get_conn, init_db, loads
+from .db import db_exists, dumps, get_conn, init_db
 from .llm_client import triage_report
 
 app = typer.Typer(help="Human-in-the-loop bug-triage improvement CLI.")

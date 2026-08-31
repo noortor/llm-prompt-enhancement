@@ -88,17 +88,37 @@ environment" below).
 
 ## What the loop actually demonstrated
 
-Running the full loop as documented in the README produced a real, measured
-result (not a constructed one; this is the actual first successful run):
+Running the full loop produced a real, measured result on the 13 held-out
+examples:
 
 | | Severity accuracy | Component accuracy |
 |---|---|---|
 | v1, baseline (zero-shot) | 38.5% | 100.0% |
-| v2, after 13 corrections | 76.9% | 100.0% |
+| v2, after 8 corrections | 46.2% | 100.0% |
+| v3, same 8 corrections, fixed exemplar formatting | 61.5% | 100.0% |
 
-6 eval examples flipped from wrong to right. **1 flipped from right to
-wrong**: the promotion gate caught it and blocked `triage promote 2` until
-I passed `--force`.
+Against the baseline, v3 fixed 4 examples and regressed 1. The promotion
+gate caught that regression and refused to promote until it was reviewed and
+explicitly overridden.
+
+The v2 → v3 step is worth separating out, because it was a bug fix rather
+than new signal: both versions draw on the *same* 8 corrections and the same
+system prompt, and differ only in how corrections are rendered into the
+prompt. The original renderer had two defects. It labelled every exemplar's
+full before-state as the "initial (incorrect) guess" even when the reviewer
+had changed only one field, so a correction that fixed only the component
+still told the model its correct severity was wrong. And it printed the
+stored rationale under "Why the human corrected it", when in practice that
+text is the *model's own* rationale for its original answer: `review`
+pre-fills the rationale prompt with the model's text, so a reviewer who
+accepts it leaves the model's justification for the wrong answer attached to
+the corrected label. Exemplars therefore argued against their own
+corrections, for example a report corrected to `Low` carrying the reasoning
+"creating a security vulnerability where sensitive credentials could be
+observed". Showing only genuinely changed fields, marking unchanged fields as
+confirmed-correct, and omitting the rationale unless the reviewer actually
+wrote one was worth **+15.4 points with no new corrections and no
+regressions**.
 
 That regression turned out to be more interesting than a simple mistake.
 Report #3 ("password reset email leaks the password in plaintext, described
@@ -119,15 +139,23 @@ missing signal. I reverted that change rather than keep tuning the dataset
 against this one eval example, since that would be overfitting the eval set
 rather than fixing the system.
 
+The exemplar-rendering fix described above is what confirmed this diagnosis.
+The self-contradictory rationales were an obvious suspect for report #3, and
+fixing them did help substantially elsewhere (+15.4 points), but #3 regressed
+under v3 exactly as it had under v2. The two failures are independent: bad
+exemplar rendering was costing accuracy across the board, while report #3 is
+specifically a retrieval-quality problem that only better similarity
+matching, real embeddings rather than TF-IDF, will fix.
+
 I'm keeping this as the centerpiece example in this writeup rather than
 finding an eval set where it doesn't happen, because it's exactly the
 failure mode the "trustworthy" requirement is asking a system to catch: an
 improvement in one place quietly costing correctness in another, for reasons
 that aren't obvious from the aggregate accuracy number alone. The gate did
 its job: it blocked the promotion and forced a human decision instead of
-auto-promoting on net accuracy. I promoted with `--force` because 6 fixes
-against 1 regression is a defensible trade in this run, and said so
-explicitly rather than silently overriding it.
+auto-promoting on net accuracy. Promoting anyway with `--force` is defensible
+when 4 fixes stand against 1 regression, but it should be a stated decision
+rather than a silent one.
 
 ## Design Decisions
 
@@ -188,11 +216,11 @@ time," now with a working harness to validate it against.
 
 **Any-regression gate (recommended)**
 - Pros: catches an individual regression hidden inside a good-looking
-  aggregate number, which is exactly what happened in this run: v2's 76.9%
-  vs. 38.5% would have auto-passed an accuracy-threshold gate while hiding
-  the report #3 regression; matches the fact that the underlying LLM serves
-  a customer-facing product, so no individual regression should ship
-  unnoticed.
+  aggregate number, which is exactly what happened in this run: v3's 61.5%
+  against a 38.5% baseline would have auto-passed an accuracy-threshold gate
+  while hiding the report #3 regression; matches the fact that the underlying
+  LLM serves a customer-facing product, so no individual regression should
+  ship unnoticed.
 - Cons: stricter and slower to promote; a single borderline example can
   block a promotion that's an obvious net win, forcing a manual `--force`
   even when the right call is clear.

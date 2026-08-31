@@ -2,7 +2,6 @@ import sqlite3
 from typing import Dict, List, Optional
 
 from . import retrieval
-from .db import dumps
 from .llm_client import triage_report
 from .schemas import EvalResultRow, EvalRun, PromptVersion
 

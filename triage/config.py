@@ -34,4 +34,4 @@ RETRIEVAL_MIN_SIMILARITY = 0.05
 # Timestamp before any real corrections could exist; used as the baseline
 # prompt version's correction_cutoff so it starts with zero exemplars (true
 # zero-shot).
-EPOCH_CUTOFF = "1970-01-01T00:00:00.000000Z"
+EPOCH_CUTOFF = "1970-01-01T00:00:00.000Z"

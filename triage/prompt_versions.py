@@ -21,7 +21,15 @@ def _row_to_prompt_version(row: sqlite3.Row) -> PromptVersion:
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+    """UTC timestamp matching schema.sql's `strftime('%Y-%m-%dT%H:%M:%fZ')`.
+
+    Cutoffs are compared against `corrections.created_at` as TEXT, so the two
+    must use identical formats. Python's %f is microseconds (6 digits) while
+    SQLite's is milliseconds (3), and the mismatch made a correction written
+    in the same millisecond as a cutoff sort *after* it and drop out of the
+    exemplar set.
+    """
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
 
 
 def ensure_baseline(conn: sqlite3.Connection) -> PromptVersion:

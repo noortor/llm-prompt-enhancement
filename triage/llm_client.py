@@ -47,22 +47,56 @@ def _client() -> anthropic.Anthropic:
 
 
 def _format_exemplars(exemplars: List[Exemplar]) -> str:
+    """Render past corrections as few-shot examples.
+
+    Only fields the reviewer actually changed are shown as corrections; a
+    field the reviewer left alone was already right, and labelling it wrong
+    teaches the opposite of what the correction meant. The rationale is
+    included only when the reviewer wrote their own, since `review`
+    pre-fills it with the model's text (see Exemplar.reviewer_wrote_rationale).
+    """
     if not exemplars:
         return ""
     blocks = []
     for ex in exemplars:
-        blocks.append(
-            f"<example>\n"
-            f"Report: {ex.report_title} - {ex.report_description}\n"
-            f"Model's initial (incorrect) guess: severity={ex.original_severity}, "
-            f"component={ex.original_component}\n"
-            f"Human correction: severity={ex.corrected_severity}, "
-            f"component={ex.corrected_component}\n"
-            f"Why the human corrected it: {ex.corrected_rationale}\n"
-            f"</example>"
-        )
+        lines = [
+            "<example>",
+            f"Report: {ex.report_title} - {ex.report_description}",
+        ]
+
+        changes = []
+        if ex.corrected_severity != ex.original_severity:
+            changes.append(
+                f"severity: the model answered {ex.original_severity}, "
+                f"the reviewer corrected it to {ex.corrected_severity}"
+            )
+        if ex.corrected_component != ex.original_component:
+            changes.append(
+                f"component: the model answered {ex.original_component}, "
+                f"the reviewer corrected it to {ex.corrected_component}"
+            )
+
+        if changes:
+            lines.append("The reviewer corrected:")
+            lines.extend(f"- {c}" for c in changes)
+        unchanged = []
+        if ex.corrected_severity == ex.original_severity:
+            unchanged.append(f"severity={ex.corrected_severity}")
+        if ex.corrected_component == ex.original_component:
+            unchanged.append(f"component={ex.corrected_component}")
+        if unchanged:
+            lines.append(
+                "The reviewer confirmed as already correct: " + ", ".join(unchanged)
+            )
+
+        if ex.reviewer_wrote_rationale:
+            lines.append(f"The reviewer's reasoning: {ex.corrected_rationale}")
+
+        lines.append("</example>")
+        blocks.append("\n".join(lines))
+
     return (
-        "Here are examples of how a human reviewer corrected similar past triage "
+        "Here are examples of how a human reviewer judged similar past triage "
         "calls. Use these to calibrate your judgment on the new report below, but "
         "don't just copy their severity/component if this report is meaningfully "
         "different.\n\n" + "\n\n".join(blocks) + "\n\n"

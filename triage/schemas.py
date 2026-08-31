@@ -17,19 +17,22 @@ class Exemplar(BaseModel):
     report_description: str
     original_severity: str
     original_component: str
+    original_rationale: str
     corrected_severity: str
     corrected_component: str
     corrected_rationale: str
     similarity: float
 
+    @property
+    def reviewer_wrote_rationale(self) -> bool:
+        """True only if the human actually edited the rationale.
 
-class BugReport(BaseModel):
-    id: int
-    title: str
-    description: str
-    split: str
-    gold_severity: str
-    gold_component: str
+        `review` pre-fills the rationale prompt with the model's own text, so
+        an unchanged rationale is the model's justification for its original
+        (wrong) answer, not an explanation of the correction. Presenting that
+        as the reviewer's reasoning teaches the opposite of the correction.
+        """
+        return self.corrected_rationale.strip() != self.original_rationale.strip()
 
 
 class PromptVersion(BaseModel):

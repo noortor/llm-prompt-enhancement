@@ -67,4 +67,6 @@ CREATE TABLE IF NOT EXISTS eval_results (
 
 CREATE INDEX IF NOT EXISTS idx_outputs_report_prompt ON model_outputs(report_id, prompt_version_id);
 CREATE INDEX IF NOT EXISTS idx_corrections_created_at ON corrections(created_at);
+CREATE INDEX IF NOT EXISTS idx_corrections_report ON corrections(report_id);
 CREATE INDEX IF NOT EXISTS idx_eval_results_run ON eval_results(eval_run_id);
+CREATE INDEX IF NOT EXISTS idx_eval_runs_prompt_version ON eval_runs(prompt_version_id);
