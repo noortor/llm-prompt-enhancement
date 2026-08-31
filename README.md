@@ -45,9 +45,9 @@ python -m triage.cli init
 python -m triage.cli eval 1
 
 # 3. Review the 27 train-split reports interactively. For each one you'll see
-#    the model's guess and three prompts (severity / component / rationale),
-#    each pre-filled with the model's answer; press Enter to approve, or
-#    type a new value to correct that field.
+#    the model's guess, then a severity and a component prompt pre-filled
+#    with its answer; press Enter to approve, or type a new value. If you
+#    change either one, you're asked why (optional, Enter to skip).
 python -m triage.cli review
 
 # 4. Build a new prompt version from whatever corrections you just made.
@@ -72,10 +72,10 @@ open eval_report.html   # (or just open the file in a browser)
 
 Your exact numbers will depend on which corrections you make, since the whole
 point is that human judgment drives the improvement. In the run documented in
-`DESIGN.md`, 8 corrections took severity accuracy from **38.5% to 61.5%** on
-the held-out set (component accuracy holds at 100% throughout), fixing 4
-examples and regressing 1. That regression is real and reproducible: the
-promotion gate blocks on it and requires an explicit `--force` to override.
+`DESIGN.md`, 13 corrections took severity accuracy from **38.5% to 84.6%** on
+the held-out set (component accuracy holds at 100% throughout), fixing 8
+examples and regressing 2. Those regressions are real and reproducible: the
+promotion gate blocks on them and requires an explicit `--force` to override.
 
 ## All commands
 

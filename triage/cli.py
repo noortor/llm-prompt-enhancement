@@ -162,14 +162,28 @@ def review(
             component = Prompt.ask(
                 "Component", choices=COMPONENTS, default=prediction.component
             )
-            rationale = Prompt.ask("Rationale", default=prediction.rationale)
 
-            reviewed_count += 1
-            if (
+            changed = (
                 severity != prediction.severity
                 or component != prediction.component
-                or rationale != prediction.rationale
-            ):
+            )
+
+            # Only ask for reasoning when a label actually changed, and ask for
+            # it fresh rather than pre-filled: a pre-filled rationale gets
+            # accepted verbatim, which stores the model's justification for the
+            # answer that was just overruled. Blank means "no explanation
+            # given", recorded by keeping the model's text so downstream
+            # rendering can tell the two cases apart.
+            rationale = prediction.rationale
+            if changed:
+                written = Prompt.ask(
+                    "Why is that the right call? (Enter to skip)", default=""
+                ).strip()
+                if written:
+                    rationale = written
+
+            reviewed_count += 1
+            if changed:
                 with get_conn() as conn:
                     conn.execute(
                         """
